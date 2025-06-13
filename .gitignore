@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# macOS system files
+.DS_Store
+
+# Python environment settings
+*.env
+.env
+
+# Launcher command files (optional to ignore if you generate them)
+*.command
+
+# VSCode or PyCharm project files
+.vscode/
+.idea/
+
+# Logs and temp
+*.log
+*.bak
+*.swp
+*.tmp
+
+# GitHub CLI auth cache (if present)
+~/.config/gh/
+
