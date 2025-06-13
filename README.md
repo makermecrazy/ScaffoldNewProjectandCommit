@@ -109,3 +109,22 @@ If anything fails:
 - Auto-generate README stubs by project type
 - Auto-insert VS Code or iTerm launch triggers
 - Add icons to launcher files
+
+## ⚠️ macOS Security Note for `.command` Files
+
+When launching a `.command` file (like `scaffold.command`, `end_scaffold.command`, or `launch_dev.command`) for the first time, macOS may block it due to security settings.
+
+To allow it to run:
+
+1. **Try launching the command file** (double-click it in Finder).
+2. If macOS blocks it and shows a warning:
+   - Open **System Settings** → **Privacy & Security**
+   - Scroll down to the **Security** section
+   - You'll see a message like:
+     > "`scaffold.command` was blocked from use because it is not from an identified developer"
+   - Click **"Allow Anyway"**
+3. Re-run the `.command` file. macOS will ask again — this time click **Open**.
+
+This only needs to be done once per file, per system.
+
+🛡 Tip: All command files are editable plain text. You can inspect them before running for peace of mind.
