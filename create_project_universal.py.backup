@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+import os
+
+PROJECT_FOLDERS = {
+    "python_tool": {
+        "folders": ["src", "scripts", "docs", "tests", "output", "sync"],
+        "launcher_folder": "general"
+    },
+    "shortcuts": {
+        "folders": ["shortcuts", "media", "docs", "scripts", "sync", "notes"],
+        "launcher_folder": "own"
+    },
+    "raspberry_pi": {
+        "folders": ["configs", "scripts", "hardware", "docs", "tests", "assets", "logs", "launchers"],
+        "launcher_folder": "own"
+    },
+    "automation_workflow": {
+        "folders": ["automations", "api_test_data", "logs", "docs", "assets"],
+        "launcher_folder": "general"
+    },
+    "books": {
+        "folders": ["chapters", "docs", "notes", "references", "exports", "markdown", "icons"],
+        "launcher_folder": "own"
+    },
+    "writing_project": {
+        "folders": ["chapters", "media", "references", "export", "formatting", "sync"],
+        "launcher_folder": "general"
+    },
+    "wordpress_site": {
+        "folders": ["html", "shortcodes", "assets", "plugins", "wp_imports", "docs"],
+        "launcher_folder": "own"
+    },
+    "financial_tool": {
+        "folders": ["input_data", "cleaned_data", "rules", "scripts", "exports", "logs", "documents"],
+        "launcher_folder": "general"
+    },
+    "diy_product": {
+        "folders": ["designs", "mockups", "print_files", "packaging", "docs", "promo"],
+        "launcher_folder": "own"
+    },
+    "video_project": {
+        "folders": ["scripts", "recordings", "assets", "captions", "edits", "upload_ready"],
+        "launcher_folder": "own"
+    },
+    "common": {
+        "folders": [".gitignore", "README.md", "sync", "launchers"],
+        "launcher_folder": None
+    }
+}
+
+def prompt_user_input():
+    print("📁 New Project Setup")
+
+    project_name = input("👉 Enter project name: ").strip()
+    print("\n📂 Select project type:")
+    types = [k for k in PROJECT_FOLDERS if k != "common"]
+    for idx, key in enumerate(types):
+        print(f"  {idx+1}. {key}")
+    type_selection = input("🔢 Type number: ").strip()
+
+    try:
+        project_type = types[int(type_selection)-1]
+    except (IndexError, ValueError):
+        print("❌ Invalid selection. Exiting.")
+        exit(1)
+
+    is_public = input("🔓 Make GitHub repo public? (y/n): ").strip().lower().startswith("y")
+    use_venv = input("🐍 Set up virtual environment? (y/n): ").strip().lower().startswith("y")
+
+    print("\n🔐 Let's set up your .env file...")
+    api_key = input("🔑 API_KEY: ").strip()
+    secret_key = input("🔒 SECRET_KEY: ").strip()
+
+    return {
+        "name": project_name,
+        "type": project_type,
+        "is_public": is_public,
+        "use_venv": use_venv,
+        "env": {
+            "API_KEY": api_key,
+            "SECRET_KEY": secret_key
+        }
+    }
+
+def create_project_structure(project_info):
+    base_path = f"/Users/catmaru/Projects/{project_info['name']}"
+    folders = PROJECT_FOLDERS[project_info["type"]]["folders"]
+    common = PROJECT_FOLDERS["common"]["folders"]
+
+    print(f"📁 Creating project at: {base_path}")
+    os.makedirs(base_path, exist_ok=True)
+
+    for folder in folders + common:
+        folder_path = os.path.join(base_path, folder)
+        if not os.path.exists(folder_path):
+            if '.' in folder:
+                open(folder_path, 'a').close()
+                print(f"📝 Created file: {folder}")
+            else:
+                os.makedirs(folder_path)
+                print(f"📂 Created folder: {folder}")
+
+    gitignore_path = os.path.join(base_path, ".gitignore")
+    with open(gitignore_path, "w") as f:
+        f.write("venv/\n__pycache__/\n.DS_Store\n.env\n*.pyc\noutput/\n")
+    print("✅ Wrote default .gitignore")
+
+    env_path = os.path.join(base_path, ".env")
+    with open(env_path, "w") as f:
+        f.write("# Environment Variables\n")
+        f.write(f"API_KEY={project_info['env']['API_KEY']}\n")
+        f.write(f"SECRET_KEY={project_info['env']['SECRET_KEY']}\n")
+    print("🧪 Created .env file with entered values")
+
+    if project_info["use_venv"]:
+        venv_path = os.path.join(base_path, "venv")
+        print("🐍 Creating virtual environment...")
+        os.system(f"python3 -m venv '{venv_path}'")
+
+    return base_path
+
+def setup_git_and_github(project_path, project_info):
+    os.chdir(project_path)
+    print("🔧 Initializing Git repo...")
+    os.system("git init")
+
+    visibility = "public" if project_info["is_public"] else "private"
+    repo_name = project_info["name"]
+
+    print(f"🌐 Creating GitHub repo '{repo_name}' ({visibility})...")
+    os.system(f"gh repo create {repo_name} --{visibility} --source=. --remote=origin --push")
+
+    print("✅ GitHub repo created and initial commit pushed.")
+
+def create_end_session_command(project_path, project_name):
+    local_cmd_path = os.path.join(project_path, "end_session.command")
+    launcher_path = "/Applications/Utilities/CustomLaunchers/General Tools"
+    final_cmd_path = os.path.join(launcher_path, "end_session.command")
+
+    script = f"""#!/bin/bash
+
+cd "/Users/catmaru/Projects/{project_name}"
+
+if [ ! -d .git ]; then
+  echo "❌ Not a Git repository. Exiting."
+  exit 1
+fi
+
+CHANGES=$(git status --porcelain)
+if [ -z "$CHANGES" ]; then
+  echo "✅ No changes to commit."
+  exit 0
+fi
+
+TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+git add .
+git commit -m "🔄 Auto-commit on session end – $TIMESTAMP"
+git push origin main
+
+if [ $? -eq 0 ]; then
+  echo "✅ Changes committed and pushed!"
+else
+  echo "⚠️ Commit failed. Please check Git setup."
+fi
+
+exit 0
+"""
+
+    with open(local_cmd_path, "w") as f:
+        f.write(script)
+
+    os.system(f"cp '{local_cmd_path}' '{final_cmd_path}'")
+    os.system(f"chmod +x '{final_cmd_path}'")
+    print(f"🛠 Copied end_session.command to launcher: {final_cmd_path}")
+
+def create_launch_dev_command(project_path, project_name):
+    local_cmd_path = os.path.join(project_path, "launch_dev.command")
+    launcher_path = f"/Applications/Utilities/CustomLaunchers/{project_name}"
+    final_cmd_path = os.path.join(launcher_path, "launch_dev.command")
+
+    os.makedirs(launcher_path, exist_ok=True)
+
+    script = f"""#!/bin/bash
+
+PROJECT_DIR="/Users/catmaru/Projects/{project_name}"
+cd "$PROJECT_DIR"
+
+# Activate virtual environment
+source "$PROJECT_DIR/venv/bin/activate"
+
+echo "🐍 Virtual environment activated."
+echo "📁 You're now in: $PROJECT_DIR"
+echo "✅ Ready to develop!"
+
+# Optional: uncomment to launch VS Code automatically
+# code .
+
+exec $SHELL
+"""
+
+    with open(local_cmd_path, "w") as f:
+        f.write(script)
+
+    os.system(f"cp '{local_cmd_path}' '{final_cmd_path}'")
+    os.system(f"chmod +x '{final_cmd_path}'")
+    print(f"🚀 launch_dev.command created and copied to launcher folder: {final_cmd_path}")
+
+def main():
+    print("🚀 Starting Project Scaffolder...\n")
+    project_info = prompt_user_input()
+    project_path = create_project_structure(project_info)
+    setup_git_and_github(project_path, project_info)
+    create_end_session_command(project_path, project_info["name"])
+
+    if project_info["use_venv"]:
+        create_launch_dev_command(project_path, project_info["name"])
+
+    print("\n✅ Done! Your project has been created at:")
+    print(f"📁 {project_path}")
+
+if __name__ == "__main__":
+    main()
